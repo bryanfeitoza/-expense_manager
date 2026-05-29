@@ -1,0 +1,117 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: gerenciador-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gerenciador_gastos
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - gerenciador-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  node:
+    build:
+      context: ./node
+      dockerfile: Dockerfile
+    container_name: gerenciador-node
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: gerenciador_gastos
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      NODE_PORT: 3000
+    volumes:
+      - ./node:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    networks:
+      - gerenciador-network
+
+  python:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    container_name: gerenciador-python
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: gerenciador_gastos
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      PYTHON_PORT: 8000
+    volumes:
+      - ./python:/app
+    ports:
+      - "8000:8000"
+    networks:
+      - gerenciador-network
+
+  java:
+    build:
+      context: ./java
+      dockerfile: Dockerfile
+    container_name: gerenciador-java
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: gerenciador_gastos
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JAVA_PORT: 8080
+    ports:
+      - "8080:8080"
+    networks:
+      - gerenciador-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: gerenciador-nginx
+    restart: unless-stopped
+    depends_on:
+      - node
+      - python
+      - java
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - gerenciador-network
+
+volumes:
+  postgres_data:
+
+networks:
+  gerenciador-network:
+    driver: bridge
