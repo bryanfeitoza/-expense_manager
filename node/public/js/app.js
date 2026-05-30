@@ -37,6 +37,10 @@ const App = {
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                if (document.getElementById('chatPanel').classList.contains('open')) {
+                    this.toggleChatPanel();
+                    return;
+                }
                 const sidebar = document.getElementById('sidebar');
                 if (window.innerWidth <= 768 && sidebar.classList.contains('show')) {
                     sidebar.classList.remove('show');
@@ -89,6 +93,59 @@ const App = {
         setTimeout(() => { if (toast.parentElement) toast.remove(); }, 4000);
     },
 
+    /* ===== CHAT PANEL ===== */
+
+    toggleChatPanel() {
+        const panel = document.getElementById('chatPanel');
+        const overlay = document.getElementById('chatOverlay');
+        panel.classList.toggle('open');
+        overlay.classList.toggle('open');
+        if (panel.classList.contains('open')) {
+            setTimeout(() => document.getElementById('chatInput')?.focus(), 300);
+        }
+    },
+
+    async sendChatMessage() {
+        const input = document.getElementById('chatInput');
+        const msg = input.value.trim();
+        if (!msg) return;
+
+        const body = document.getElementById('chatBody');
+        const empty = body.querySelector('.chat-empty');
+        if (empty) empty.remove();
+
+        body.appendChild(this.createMsgBubble(msg, 'user'));
+        input.value = '';
+        body.scrollTop = body.scrollHeight;
+
+        const btn = document.getElementById('chatSendBtn');
+        btn.disabled = true;
+
+        try {
+            const result = await API.aiChat({ message: msg });
+            const response = result.response || result.message || '';
+            body.appendChild(this.createMsgBubble(response, 'system'));
+        } catch {
+            body.appendChild(this.createMsgBubble('Não foi possível processar agora.', 'system'));
+        }
+
+        btn.disabled = false;
+        body.scrollTop = body.scrollHeight;
+    },
+
+    createMsgBubble(text, role) {
+        const div = document.createElement('div');
+        div.className = `chat-msg ${role}`;
+        div.innerHTML = `<div class="msg-bubble">${this.escapeHtml(text)}</div>`;
+        return div;
+    },
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+
     renderAuth(page) {
         document.getElementById('auth-container').classList.remove('d-none');
         document.getElementById('app-container').classList.add('d-none');
@@ -103,7 +160,7 @@ const App = {
                                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
                             </div>
                             <h4>Criar Conta</h4>
-                            <p>Gerencie seus gastos com inteligência artificial</p>
+                            <p>Gerencie suas finanças</p>
                         </div>
                         <form id="registerForm">
                             <div class="mb-3">
@@ -136,7 +193,7 @@ const App = {
                                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
                             </div>
                             <h4>Gerenciador de Gastos</h4>
-                            <p>Com IA para insights inteligentes</p>
+                            <p>Organize seus gastos</p>
                         </div>
                         <form id="loginForm">
                             <div class="mb-3">
@@ -237,7 +294,7 @@ const App = {
             accounts: 'Contas',
             goals: 'Metas',
             budgets: 'Orçamentos',
-            ai: 'IA Financeira',
+            ai: 'Análises',
             reports: 'Relatórios'
         };
         document.getElementById('pageTitle').textContent = titles[page] || 'Dashboard';
@@ -272,35 +329,35 @@ const App = {
                 API.getCategoryBreakdown()
             ]);
 
-            const balanceColor = summary.totalBalance >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)';
-            const netColor = summary.netBalance >= 0 ? 'var(--accent-cyan)' : 'var(--accent-red)';
+            const balanceColor = summary.totalBalance >= 0 ? 'var(--accent)' : 'var(--red)';
+            const netColor = summary.netBalance >= 0 ? 'var(--accent)' : 'var(--red)';
 
             container.innerHTML = `
                 <div class="row g-3 mb-4">
                     <div class="col-md-3 col-6">
-                        <div class="stat-card" style="border-top: 2px solid var(--accent-blue);background:linear-gradient(135deg,var(--bg-card),rgba(59,130,246,0.05))">
-                            <div class="stat-icon" style="background:var(--accent-blue-dim);color:var(--accent-blue)"><i class="bi bi-wallet2"></i></div>
+                        <div class="stat-card" style="border-top: 2px solid var(--accent)">
+                            <div class="stat-icon" style="background:var(--accent-dim);color:var(--accent)"><i class="bi bi-wallet2"></i></div>
                             <div class="stat-value" style="color:${balanceColor}">${this.formatCurrency(summary.totalBalance)}</div>
                             <div class="stat-label">Saldo Total</div>
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
-                        <div class="stat-card" style="border-top: 2px solid var(--accent-green);background:linear-gradient(135deg,var(--bg-card),rgba(34,197,94,0.05))">
-                            <div class="stat-icon" style="background:var(--accent-green-dim);color:var(--accent-green)"><i class="bi bi-arrow-up-circle"></i></div>
-                            <div class="stat-value" style="color:var(--accent-green)">${this.formatCurrency(summary.monthlyIncome)}</div>
+                        <div class="stat-card" style="border-top: 2px solid var(--green)">
+                            <div class="stat-icon" style="background:var(--green-dim);color:var(--green)"><i class="bi bi-arrow-up-circle"></i></div>
+                            <div class="stat-value" style="color:var(--green)">${this.formatCurrency(summary.monthlyIncome)}</div>
                             <div class="stat-label">Receitas do Mês</div>
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
-                        <div class="stat-card" style="border-top: 2px solid var(--accent-red);background:linear-gradient(135deg,var(--bg-card),rgba(239,68,68,0.05))">
-                            <div class="stat-icon" style="background:var(--accent-red-dim);color:var(--accent-red)"><i class="bi bi-arrow-down-circle"></i></div>
-                            <div class="stat-value" style="color:var(--accent-red)">${this.formatCurrency(summary.monthlyExpenses)}</div>
+                        <div class="stat-card" style="border-top: 2px solid var(--red)">
+                            <div class="stat-icon" style="background:var(--red-dim);color:var(--red)"><i class="bi bi-arrow-down-circle"></i></div>
+                            <div class="stat-value" style="color:var(--red)">${this.formatCurrency(summary.monthlyExpenses)}</div>
                             <div class="stat-label">Despesas do Mês</div>
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
-                        <div class="stat-card" style="border-top: 2px solid var(--accent-cyan);background:linear-gradient(135deg,var(--bg-card),rgba(34,211,238,0.05))">
-                            <div class="stat-icon" style="background:var(--accent-cyan-dim);color:var(--accent-cyan)"><i class="bi bi-piggy-bank"></i></div>
+                        <div class="stat-card" style="border-top: 2px solid var(--accent)">
+                            <div class="stat-icon" style="background:var(--accent-dim);color:var(--accent)"><i class="bi bi-piggy-bank"></i></div>
                             <div class="stat-value" style="color:${netColor}">${this.formatCurrency(summary.netBalance)}</div>
                             <div class="stat-label">Balanço do Mês</div>
                         </div>
@@ -313,8 +370,8 @@ const App = {
                             <div class="card-header">
                                 <h6>Evolução Mensal</h6>
                                 <span style="display:flex;gap:1rem;font-size:0.75rem">
-                                    <span style="color:var(--accent-green)"><i class="bi bi-circle-fill" style="font-size:0.5rem;margin-right:0.25rem"></i>Receitas</span>
-                                    <span style="color:var(--accent-red)"><i class="bi bi-circle-fill" style="font-size:0.5rem;margin-right:0.25rem"></i>Despesas</span>
+                                    <span style="color:var(--green)"><i class="bi bi-circle-fill" style="font-size:0.5rem;margin-right:0.25rem"></i>Receitas</span>
+                                    <span style="color:var(--red)"><i class="bi bi-circle-fill" style="font-size:0.5rem;margin-right:0.25rem"></i>Despesas</span>
                                 </span>
                             </div>
                             <div class="chart-container">
@@ -348,11 +405,11 @@ const App = {
                                     <tr>
                                         <td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${c.color};margin-right:0.5rem"></span>${c.name}</td>
                                         <td><span class="badge-despesa">${c.type}</span></td>
-                                        <td style="color:var(--accent-red)">${this.formatCurrency(c.total)}</td>
+                                        <td style="color:var(--red)">${this.formatCurrency(c.total)}</td>
                                         <td>
                                             <div style="display:flex;align-items:center;gap:0.5rem">
                                                 <div class="progress flex-grow-1" style="height:6px;width:100px">
-                                                    <div class="progress-bar" style="width:${c.percentage || 0}%;background:${c.color || 'var(--accent-red)'}"></div>
+                                                    <div class="progress-bar" style="width:${c.percentage || 0}%;background:${c.color || 'var(--red)'}"></div>
                                                 </div>
                                                 <span style="font-size:0.8rem;color:var(--text-secondary)">${c.percentage || 0}%</span>
                                             </div>
@@ -520,7 +577,7 @@ const App = {
                                             <td><strong>${t.description || '-'}</strong></td>
                                             <td>${t.category ? `<span style="display:inline-flex;align-items:center;gap:0.35rem"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${catColor}"></span>${t.category.name}</span>` : '<span class="text-muted">—</span>'}</td>
                                             <td><span class="badge-${t.type === 'receita' ? 'receita' : 'despesa'}">${t.type}</span></td>
-                                            <td style="color:${t.type === 'receita' ? 'var(--accent-green)' : 'var(--accent-red)'};font-weight:600;font-variant-numeric:tabular-nums">${this.formatCurrency(t.amount)}</td>
+                                            <td style="color:${t.type === 'receita' ? 'var(--green)' : 'var(--red)'};font-weight:600;font-variant-numeric:tabular-nums">${this.formatCurrency(t.amount)}</td>
                                             <td>
                                                 <div style="display:flex;gap:0.35rem">
                                                     <button class="btn btn-sm btn-outline-secondary" onclick="App.showTransactionModal('${t.id}')" title="Editar"><i class="bi bi-pencil"></i></button>
@@ -604,7 +661,7 @@ const App = {
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content animate-scale-in">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="bi bi-${isEdit ? 'pencil' : 'plus-circle'} me-2" style="color:var(--accent-blue)"></i>${isEdit ? 'Editar' : 'Nova'} Transação</h5>
+                        <h5 class="modal-title"><i class="bi bi-${isEdit ? 'pencil' : 'plus-circle'} me-2" style="color:var(--accent)"></i>${isEdit ? 'Editar' : 'Nova'} Transação</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
@@ -777,7 +834,7 @@ const App = {
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content animate-scale-in">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="bi bi-tag me-2" style="color:var(--accent-blue)"></i>${isEdit ? 'Editar' : 'Nova'} Categoria</h5>
+                        <h5 class="modal-title"><i class="bi bi-tag me-2" style="color:var(--accent)"></i>${isEdit ? 'Editar' : 'Nova'} Categoria</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
@@ -859,9 +916,9 @@ const App = {
             container.innerHTML = `
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
-                        <div class="stat-card" style="border-top:2px solid var(--accent-blue);background:linear-gradient(135deg,var(--bg-card),rgba(59,130,246,0.05))">
-                            <div class="stat-label">Saldo Total</div>
-                            <div class="stat-value" style="color:var(--accent-blue)">${this.formatCurrency(total)}</div>
+                        <div class="stat-card" style="border-top:2px solid var(--accent)">
+                             <div class="stat-label">Saldo Total</div>
+                            <div class="stat-value" style="color:var(--accent)">${this.formatCurrency(total)}</div>
                             <div class="stat-label">em ${(data || []).length} conta(s)</div>
                         </div>
                     </div>
@@ -881,7 +938,7 @@ const App = {
                                     <tr>
                                         <td><strong>${a.name}</strong></td>
                                         <td><span class="text-secondary">${typeNames[a.type] || a.type}</span></td>
-                                        <td style="color:${a.balance >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};font-weight:600">${this.formatCurrency(a.balance)}</td>
+                                        <td style="color:${a.balance >= 0 ? 'var(--green)' : 'var(--red)'};font-weight:600">${this.formatCurrency(a.balance)}</td>
                                         <td>${a.currency || 'BRL'}</td>
                                         <td>
                                             <div style="display:flex;gap:0.35rem">
@@ -913,7 +970,7 @@ const App = {
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content animate-scale-in">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="bi bi-wallet2 me-2" style="color:var(--accent-blue)"></i>${isEdit ? 'Editar' : 'Nova'} Conta</h5>
+                        <h5 class="modal-title"><i class="bi bi-wallet2 me-2" style="color:var(--accent)"></i>${isEdit ? 'Editar' : 'Nova'} Conta</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
@@ -1002,11 +1059,11 @@ const App = {
                     <div class="row g-3 p-3">
                         ${(data || []).map(g => {
                             const progress = g.targetAmount > 0 ? Math.min(100, (g.currentAmount / g.targetAmount) * 100) : 0;
-                            const barColor = progress >= 100 ? 'var(--accent-green)' : progress >= 50 ? 'var(--accent-blue)' : 'var(--accent-yellow)';
+                            const barColor = progress >= 100 ? 'var(--green)' : progress >= 50 ? 'var(--accent)' : 'var(--yellow)';
                             const daysLeft = g.deadline ? Math.ceil((new Date(g.deadline) - new Date()) / (1000 * 60 * 60 * 24)) : null;
                             return `
                                 <div class="col-md-6 col-lg-4">
-                                    <div class="card budget-card h-100" style="background:linear-gradient(135deg,var(--bg-card),rgba(167,139,250,0.03))">
+                                    <div class="card budget-card h-100">
                                         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem">
                                             <div style="display:flex;align-items:center;gap:0.75rem">
                                                 <div style="width:44px;height:44px;border-radius:12px;background:${g.color || '#a78bfa'}22;display:flex;align-items:center;justify-content:center;font-size:1.3rem">🎯</div>
@@ -1027,7 +1084,7 @@ const App = {
                                         <div class="progress" style="height:8px;background:rgba(148,163,184,0.1)">
                                             <div class="progress-bar" style="width:${progress}%;background:${barColor}" role="progressbar" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100"></div>
                                         </div>
-                                        <small class="mt-2" style="color:${progress >= 100 ? 'var(--accent-green)' : 'var(--text-secondary)'};font-weight:500">${progress.toFixed(0)}% concluído</small>
+                                        <small class="mt-2" style="color:${progress >= 100 ? 'var(--green)' : 'var(--text-secondary)'};font-weight:500">${progress.toFixed(0)}% concluído</small>
                                     </div>
                                 </div>
                             `;
@@ -1052,7 +1109,7 @@ const App = {
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content animate-scale-in">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="bi bi-piggy-bank me-2" style="color:var(--accent-purple)"></i>${isEdit ? 'Editar' : 'Nova'} Meta</h5>
+                        <h5 class="modal-title"><i class="bi bi-piggy-bank me-2" style="color:var(--accent)"></i>${isEdit ? 'Editar' : 'Nova'} Meta</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
@@ -1155,34 +1212,34 @@ const App = {
             container.innerHTML = `
                 <div class="row g-3 mb-4">
                     <div class="col-md-3 col-6">
-                        <div class="stat-card" style="border-top:2px solid var(--accent-blue);background:linear-gradient(135deg,var(--bg-card),rgba(59,130,246,0.05))">
-                            <div class="stat-label">Total Gasto em ${year}</div>
-                            <div class="stat-value" style="color:var(--accent-red);font-size:1.3rem">${this.formatCurrency(totalSpent)}</div>
+                        <div class="stat-card" style="border-top:2px solid var(--accent)">
+                             <div class="stat-label">Total Gasto em ${year}</div>
+                            <div class="stat-value" style="color:var(--red);font-size:1.3rem">${this.formatCurrency(totalSpent)}</div>
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
-                        <div class="stat-card" style="border-top:2px solid var(--accent-cyan);background:linear-gradient(135deg,var(--bg-card),rgba(34,211,238,0.05))">
-                            <div class="stat-label">Média por Dia</div>
-                            <div class="stat-value" style="color:var(--accent-cyan);font-size:1.3rem">${this.formatCurrency(avgDaily)}</div>
+                        <div class="stat-card" style="border-top:2px solid var(--accent)">
+                             <div class="stat-label">Média por Dia</div>
+                            <div class="stat-value" style="color:var(--accent);font-size:1.3rem">${this.formatCurrency(avgDaily)}</div>
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
-                        <div class="stat-card" style="border-top:2px solid var(--accent-yellow);background:linear-gradient(135deg,var(--bg-card),rgba(234,179,8,0.05))">
-                            <div class="stat-label">Dias com Gastos</div>
-                            <div class="stat-value" style="color:var(--accent-yellow);font-size:1.3rem">${(data || []).length}</div>
+                        <div class="stat-card" style="border-top:2px solid var(--yellow)">
+                             <div class="stat-label">Dias com Gastos</div>
+                            <div class="stat-value" style="color:var(--yellow);font-size:1.3rem">${(data || []).length}</div>
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
-                        <div class="stat-card" style="border-top:2px solid var(--accent-purple);background:linear-gradient(135deg,var(--bg-card),rgba(167,139,250,0.05))">
-                            <div class="stat-label">Maior Gasto (dia)</div>
-                            <div class="stat-value" style="color:var(--accent-purple);font-size:1.3rem">${this.formatCurrency(maxTotal)}</div>
+                        <div class="stat-card" style="border-top:2px solid var(--accent)">
+                             <div class="stat-label">Maior Gasto (dia)</div>
+                            <div class="stat-value" style="color:var(--accent);font-size:1.3rem">${this.formatCurrency(maxTotal)}</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="card animate-fade-in">
                     <div class="card-header">
-                        <h6><i class="bi bi-calendar-heart me-2" style="color:var(--accent-blue)"></i>Mapa de Calor de Gastos - ${year}</h6>
+                        <h6><i class="bi bi-calendar-heart me-2" style="color:var(--accent)"></i>Mapa de Calor de Gastos - ${year}</h6>
                         <span style="font-size:0.75rem;color:var(--text-muted)">Passe o mouse sobre os dias para detalhes</span>
                     </div>
                     <div class="heatmap-container">
@@ -1237,7 +1294,7 @@ const App = {
                                 ${(data || []).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10).map(d => `
                                     <tr>
                                         <td>${new Date(d.date).toLocaleDateString('pt-BR')}</td>
-                                        <td style="color:var(--accent-red);font-weight:600">${this.formatCurrency(d.total)}</td>
+                                        <td style="color:var(--red);font-weight:600">${this.formatCurrency(d.total)}</td>
                                     </tr>
                                 `).join('') || '<tr><td colspan="2" class="text-center text-secondary py-4">Nenhum gasto registrado neste ano</td></tr>'}
                             </tbody>
@@ -1266,28 +1323,28 @@ const App = {
             container.innerHTML = `
                 <div class="row g-3 mb-4">
                     <div class="col-md-4 col-6">
-                        <div class="stat-card" style="border-top:2px solid var(--accent-blue);background:linear-gradient(135deg,var(--bg-card),rgba(59,130,246,0.05))">
-                            <div class="stat-label">Orçamentos Ativos</div>
-                            <div class="stat-value" style="color:var(--accent-blue);font-size:1.3rem">${(budgets || []).length}</div>
+                        <div class="stat-card" style="border-top:2px solid var(--accent)">
+                             <div class="stat-label">Orçamentos Ativos</div>
+                            <div class="stat-value" style="color:var(--accent);font-size:1.3rem">${(budgets || []).length}</div>
                         </div>
                     </div>
                     <div class="col-md-4 col-6">
-                        <div class="stat-card" style="border-top:2px solid var(--accent-green);background:linear-gradient(135deg,var(--bg-card),rgba(34,197,94,0.05))">
-                            <div class="stat-label">Dentro do Orçamento</div>
-                            <div class="stat-value" style="color:var(--accent-green);font-size:1.3rem">${(budgets || []).filter(b => b.percentage < 80).length}</div>
+                        <div class="stat-card" style="border-top:2px solid var(--green)">
+                             <div class="stat-label">Dentro do Orçamento</div>
+                            <div class="stat-value" style="color:var(--green);font-size:1.3rem">${(budgets || []).filter(b => b.percentage < 80).length}</div>
                         </div>
                     </div>
                     <div class="col-md-4 col-6">
-                        <div class="stat-card" style="border-top:2px solid var(--accent-red);background:linear-gradient(135deg,var(--bg-card),rgba(239,68,68,0.05))">
-                            <div class="stat-label">Estourados</div>
-                            <div class="stat-value" style="color:var(--accent-red);font-size:1.3rem">${(budgets || []).filter(b => b.percentage >= 100).length}</div>
+                        <div class="stat-card" style="border-top:2px solid var(--red)">
+                             <div class="stat-label">Estourados</div>
+                            <div class="stat-value" style="color:var(--red);font-size:1.3rem">${(budgets || []).filter(b => b.percentage >= 100).length}</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="card animate-fade-in">
                     <div class="card-header">
-                        <h6><i class="bi bi-pie-chart me-2" style="color:var(--accent-blue)"></i>Orçamentos Mensais - ${this.monthNames[now.getMonth()]}</h6>
+                        <h6><i class="bi bi-pie-chart me-2" style="color:var(--accent)"></i>Orçamentos Mensais - ${this.monthNames[now.getMonth()]}</h6>
                         <button class="btn btn-primary btn-sm" onclick="App.showBudgetModal()"><i class="bi bi-plus-lg"></i> Novo</button>
                     </div>
                     <div class="row g-3 p-3">
@@ -1297,7 +1354,7 @@ const App = {
                             const circumference = 2 * Math.PI * 34;
                             const offset = circumference - (pct / 100) * circumference;
                             const catName = b.category ? b.category.name : 'Geral';
-                            const catColor = b.category ? b.category.color : '#3b82f6';
+                            const catColor = b.category ? b.category.color : '#06b6d4';
                             return `
                                 <div class="col-md-6 col-lg-4">
                                     <div class="card budget-card">
@@ -1307,7 +1364,7 @@ const App = {
                                                     <circle class="ring-bg" cx="40" cy="40" r="34"/>
                                                     <circle class="ring-fill" cx="40" cy="40" r="34" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" style="stroke:${pct >= 100 ? '#ef4444' : pct >= 80 ? '#eab308' : '#22c55e'}"/>
                                                 </svg>
-                                                <div class="ring-center" style="color:${pct >= 100 ? 'var(--accent-red)' : pct >= 80 ? 'var(--accent-yellow)' : 'var(--accent-green)'}">${pct.toFixed(0)}%</div>
+                                                <div class="ring-center" style="color:${pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--yellow)' : 'var(--green)'}">${pct.toFixed(0)}%</div>
                                             </div>
                                             <div style="flex:1;min-width:0">
                                                 <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -1325,7 +1382,7 @@ const App = {
                                                     <span class="text-muted" style="font-size:0.8rem"> / ${this.formatCurrency(b.limitAmount)}</span>
                                                 </div>
                                                 <div style="display:flex;justify-content:space-between;margin-top:0.25rem">
-                                                    <span style="font-size:0.7rem;color:${pct >= 100 ? 'var(--accent-red)' : 'var(--text-secondary)'}">
+                                                    <span style="font-size:0.7rem;color:${pct >= 100 ? 'var(--red)' : 'var(--text-secondary)'}">
                                                         ${pct >= 100 ? '⚠️ Limite excedido' : `${this.formatCurrency(b.remaining)} restantes`}
                                                     </span>
                                                 </div>
@@ -1358,7 +1415,7 @@ const App = {
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content animate-scale-in">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="bi bi-pie-chart me-2" style="color:var(--accent-blue)"></i>${isEdit ? 'Editar' : 'Novo'} Orçamento</h5>
+                        <h5 class="modal-title"><i class="bi bi-pie-chart me-2" style="color:var(--accent)"></i>${isEdit ? 'Editar' : 'Novo'} Orçamento</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
@@ -1440,124 +1497,112 @@ const App = {
         const tips = await API.getTips().catch(() => ({ tips: [] }));
         container.innerHTML = `
             <div class="row g-3 animate-fade-in">
-                <div class="col-lg-8">
-                    <div class="card">
+                <div class="col-lg-6">
+                    <div class="card" id="aiAnalysisPanel">
                         <div class="card-header">
-                            <h6><i class="bi bi-robot me-2" style="color:var(--accent-blue)"></i>Chat Financeiro com IA</h6>
-                            <span class="ai-status online"><i class="bi bi-circle-fill"></i> IA ${tips.tips?.length > 0 ? 'Online' : 'Simulada'}</span>
+                            <h6>Análise de Gastos</h6>
                         </div>
-                        <div id="chatMessages" style="height:360px;overflow-y:auto;margin-bottom:1rem;padding:0.5rem">
-                            <div class="ai-message">
-                                <div class="msg-header">
-                                    <i class="bi bi-robot" style="color:var(--accent-blue)"></i>
-                                    <span>Assistente IA</span>
-                                </div>
-                                <div class="msg-content">Olá! Sou seu assistente financeiro. Pergunte sobre seus gastos, peça dicas de economia, ou análise de despesas. 💰</div>
-                            </div>
+                        <div class="text-center py-4" id="aiDefaultState">
+                            <i class="bi bi-bar-chart-line" style="font-size:2.5rem;color:var(--text-muted);opacity:0.4;display:block;margin-bottom:0.75rem"></i>
+                            <p class="text-secondary" style="font-size:0.9rem">Selecione uma análise para visualizar o resultado</p>
                         </div>
-                        <div style="display:flex;gap:0.5rem">
-                            <input type="text" class="form-control" id="chatInput" placeholder="Digite sua mensagem..." onkeypress="if(event.key==='Enter') App.sendChatMessage()">
-                            <button class="btn btn-primary" onclick="App.sendChatMessage()" id="chatSendBtn"><i class="bi bi-send"></i></button>
-                        </div>
+                        <div id="aiResultArea"></div>
                     </div>
                 </div>
-                <div class="col-lg-4">
+                <div class="col-lg-6">
                     <div class="card">
-                        <div class="card-header"><h6><i class="bi bi-lightbulb me-2" style="color:var(--accent-yellow)"></i>Dicas Inteligentes</h6></div>
-                        <div style="max-height:360px;overflow-y:auto">
-                            ${(tips.tips || ['Mantenha um controle regular dos seus gastos.','Defina metas financeiras mensais.','Use categorias para organizar suas despesas.']).map(t => `
-                                <div class="ai-message" style="margin-bottom:0.5rem">
-                                    <div class="msg-header">
-                                        <i class="bi bi-lightbulb" style="color:var(--accent-yellow)"></i>
-                                        <span>Dica</span>
-                                    </div>
-                                    <div class="msg-content">${t}</div>
+                        <div class="card-header">
+                            <h6>Ações</h6>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:0.75rem;padding:0.25rem 0">
+                            <button class="btn btn-outline-secondary text-start" onclick="App.analyzeSpending()" id="btnAnalyze" style="padding:0.75rem 1rem">
+                                <div style="display:flex;align-items:center;gap:0.75rem">
+                                    <span style="width:36px;height:36px;border-radius:8px;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi bi-search" style="color:var(--accent)"></i></span>
+                                    <div><strong style="font-size:0.9rem">Analisar Gastos</strong><br><small class="text-muted">Resumo detalhado do período atual</small></div>
                                 </div>
-                            `).join('')}
+                            </button>
+                            <button class="btn btn-outline-secondary text-start" onclick="App.detectAnomalies()" id="btnAnomalies" style="padding:0.75rem 1rem">
+                                <div style="display:flex;align-items:center;gap:0.75rem">
+                                    <span style="width:36px;height:36px;border-radius:8px;background:var(--yellow-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi bi-exclamation-triangle" style="color:var(--yellow)"></i></span>
+                                    <div><strong style="font-size:0.9rem">Detectar Anomalias</strong><br><small class="text-muted">Gastos fora do padrão habitual</small></div>
+                                </div>
+                            </button>
+                            <button class="btn btn-outline-secondary text-start" onclick="App.getPredictions()" id="btnPredict" style="padding:0.75rem 1rem">
+                                <div style="display:flex;align-items:center;gap:0.75rem">
+                                    <span style="width:36px;height:36px;border-radius:8px;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi bi-graph-up-arrow" style="color:var(--accent)"></i></span>
+                                    <div><strong style="font-size:0.9rem">Prever Despesas</strong><br><small class="text-muted">Projeção para os próximos meses</small></div>
+                                </div>
+                            </button>
                         </div>
                     </div>
-                    <div style="display:flex;gap:0.5rem;margin-top:0.75rem">
-                        <button class="btn btn-outline-secondary flex-fill" onclick="App.analyzeSpending()"><i class="bi bi-search"></i> Analisar</button>
-                        <button class="btn btn-outline-secondary flex-fill" onclick="App.detectAnomalies()"><i class="bi bi-exclamation-triangle"></i> Anomalias</button>
-                        <button class="btn btn-outline-secondary flex-fill" onclick="App.getPredictions()"><i class="bi bi-graph-up-arrow"></i> Prever</button>
+                    <div class="card mt-3">
+                        <div class="card-header"><h6>Dicas</h6></div>
+                        <div style="max-height:240px;overflow-y:auto">
+                            ${(tips.tips || ['Mantenha um controle regular dos seus gastos.','Defina metas financeiras mensais.','Use categorias para organizar suas despesas.']).map(t => `
+                                <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:0.75rem 1rem;margin-bottom:0.5rem;font-size:0.85rem;line-height:1.5">${t}</div>
+                            `).join('')}
+                        </div>
                     </div>
                 </div>
             </div>
         `;
     },
 
-    async sendChatMessage() {
-        const input = document.getElementById('chatInput');
-        const msg = input.value.trim();
-        if (!msg) return;
-
-        const container = document.getElementById('chatMessages');
-        container.innerHTML += `<div class="ai-message user animate-slide-in-right"><div class="msg-header"><i class="bi bi-person"></i><span>Você</span></div><div class="msg-content">${this.escapeHtml(msg)}</div></div>`;
-        input.value = '';
-
-        const btn = document.getElementById('chatSendBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="loading-spinner" style="width:1rem;height:1rem"></span>';
-
-        try {
-            const result = await API.aiChat({ message: msg });
-            const response = result.response || result.message || 'Não entendi. Pode reformular?';
-            container.innerHTML += `<div class="ai-message animate-slide-in-right"><div class="msg-header"><i class="bi bi-robot" style="color:var(--accent-blue)"></i><span>Assistente IA</span></div><div class="msg-content">${this.escapeHtml(response)}</div></div>`;
-        } catch {
-            container.innerHTML += `<div class="ai-message animate-slide-in-right"><div class="msg-header"><i class="bi bi-robot" style="color:var(--accent-blue)"></i><span>Assistente IA</span></div><div class="msg-content">Desculpe, não consegui processar sua mensagem agora. Tente novamente.</div></div>`;
-        }
-
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-send"></i>';
-        container.scrollTop = container.scrollHeight;
-    },
-
     async analyzeSpending() {
+        const area = document.getElementById('aiResultArea');
+        const defaultState = document.getElementById('aiDefaultState');
+        const btn = document.getElementById('btnAnalyze');
+        if (defaultState) defaultState.style.display = 'none';
+        area.innerHTML = '<div class="text-center py-3"><span class="loading-spinner"></span></div>';
+        btn.disabled = true;
         try {
             const result = await API.analyzeSpending({ period: 'month' });
-            const msg = result.analysis || result.message || (Array.isArray(result) ? result.join('\n') : 'Análise concluída. Seus gastos estão dentro do esperado.');
-            const container = document.getElementById('chatMessages');
-            container.innerHTML += `<div class="ai-message animate-slide-in-right"><div class="msg-header"><i class="bi bi-search" style="color:var(--accent-cyan)"></i><span>Análise de Gastos</span></div><div class="msg-content">${this.escapeHtml(msg)}</div></div>`;
-            container.scrollTop = container.scrollHeight;
+            const msg = result.analysis || result.message || (Array.isArray(result) ? result.join('\n') : 'Nenhum dado relevante no período.');
+            area.innerHTML = `<div class="animate-fade-in" style="padding:0.5rem 0"><div style="background:var(--accent-dim);border-radius:10px;padding:1rem;font-size:0.9rem;line-height:1.6;white-space:pre-wrap">${this.escapeHtml(msg)}</div></div>`;
         } catch {
-            this.toast('Erro ao analisar gastos', 'error');
+            area.innerHTML = `<div class="alert alert-info">Nenhum gasto registrado neste período para análise.</div>`;
         }
+        btn.disabled = false;
     },
 
     async detectAnomalies() {
+        const area = document.getElementById('aiResultArea');
+        const defaultState = document.getElementById('aiDefaultState');
+        const btn = document.getElementById('btnAnomalies');
+        if (defaultState) defaultState.style.display = 'none';
+        area.innerHTML = '<div class="text-center py-3"><span class="loading-spinner"></span></div>';
+        btn.disabled = true;
         try {
             const result = await API.getAnomalies();
             const anomalies = result.anomalies || [];
-            const container = document.getElementById('chatMessages');
             if (anomalies.length === 0) {
-                container.innerHTML += `<div class="ai-message animate-slide-in-right"><div class="msg-header"><i class="bi bi-check-circle" style="color:var(--accent-green)"></i><span>Anomalias</span></div><div class="msg-content">Nenhuma anomalia detectada! ✅</div></div>`;
+                area.innerHTML = `<div class="animate-fade-in" style="padding:0.5rem 0"><div style="background:var(--green-dim);border-radius:10px;padding:1rem;display:flex;align-items:center;gap:0.75rem"><i class="bi bi-check-circle-fill" style="color:var(--green);font-size:1.2rem"></i><span style="font-size:0.9rem">Nenhuma anomalia detectada no período.</span></div></div>`;
             } else {
-                const text = anomalies.map(a => `⚠️ ${a.description || a}`).join('\n');
-                container.innerHTML += `<div class="ai-message animate-slide-in-right"><div class="msg-header"><i class="bi bi-exclamation-triangle" style="color:var(--accent-yellow)"></i><span>Anomalias Detectadas</span></div><div class="msg-content">${this.escapeHtml(text)}</div></div>`;
+                const items = anomalies.map(a => `<div style="display:flex;align-items:start;gap:0.5rem;padding:0.5rem 0;border-bottom:1px solid var(--border-color)"><i class="bi bi-exclamation-triangle-fill" style="color:var(--yellow);margin-top:0.15rem"></i><span style="font-size:0.85rem">${a.description || a}</span></div>`).join('');
+                area.innerHTML = `<div class="animate-fade-in" style="padding:0.5rem 0"><div class="card-header" style="padding:0.5rem 0"><h6>Anomalias Detectadas</h6></div>${items}</div>`;
             }
-            container.scrollTop = container.scrollHeight;
         } catch {
-            this.toast('Erro ao detectar anomalias', 'error');
+            area.innerHTML = `<div class="alert alert-info">Não foi possível verificar anomalias agora.</div>`;
         }
+        btn.disabled = false;
     },
 
     async getPredictions() {
+        const area = document.getElementById('aiResultArea');
+        const defaultState = document.getElementById('aiDefaultState');
+        const btn = document.getElementById('btnPredict');
+        if (defaultState) defaultState.style.display = 'none';
+        area.innerHTML = '<div class="text-center py-3"><span class="loading-spinner"></span></div>';
+        btn.disabled = true;
         try {
             const result = await API.getPredictions();
             const predictions = result.predictions || result;
-            const container = document.getElementById('chatMessages');
             const text = typeof predictions === 'string' ? predictions : (predictions.message || predictions.insight || 'Previsão não disponível.');
-            container.innerHTML += `<div class="ai-message animate-slide-in-right"><div class="msg-header"><i class="bi bi-graph-up-arrow" style="color:var(--accent-purple)"></i><span>Previsões</span></div><div class="msg-content">${this.escapeHtml(text)}</div></div>`;
-            container.scrollTop = container.scrollHeight;
+            area.innerHTML = `<div class="animate-fade-in" style="padding:0.5rem 0"><div style="background:var(--accent-dim);border-radius:10px;padding:1rem;font-size:0.9rem;line-height:1.6;white-space:pre-wrap">${this.escapeHtml(text)}</div></div>`;
         } catch {
-            this.toast('Erro ao obter previsões', 'error');
+            area.innerHTML = `<div class="alert alert-info">Sem dados suficientes para projeções.</div>`;
         }
-    },
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        btn.disabled = false;
     },
 
     /* ===== REPORTS ===== */
@@ -1610,7 +1655,7 @@ const App = {
                                         <td style="font-weight:600">${this.formatCurrency(c.total)}</td>
                                         <td>
                                             <div class="progress" style="height:6px;width:100px;display:inline-block;vertical-align:middle;margin-right:0.5rem">
-                                                <div class="progress-bar" style="width:${c.percentage || 0}%;background:${c.color || 'var(--accent-blue)'}"></div>
+                                                <div class="progress-bar" style="width:${c.percentage || 0}%;background:${c.color || 'var(--accent)'}"></div>
                                             </div>
                                             <span style="font-size:0.8rem;color:var(--text-secondary)">${(c.percentage || 0).toFixed(1)}%</span>
                                         </td>
